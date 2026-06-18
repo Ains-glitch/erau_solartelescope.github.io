@@ -611,9 +611,9 @@ function loadSdoImage(){
   const chan = SDO_CHANNELS[sdoChannelIndex];
   const img = document.getElementById('sunImg');
   img.src = `https://sdo.gsfc.nasa.gov/assets/img/latest/latest_1024_${chan.id}.jpg?t=${Date.now()}`;
-  img.alt = `Live Sun image — SDO ${chan.label}`;
+  img.alt = `Live Sun image: SDO ${chan.label}`;
   document.getElementById('sunCaption').textContent =
-    `SDO/AIA ${chan.label} — ${chan.desc} Updates every few minutes directly from NASA.`;
+    `SDO/AIA ${chan.label}: ${chan.desc} Updates every few minutes directly from NASA.`;
 }
 
 /* ============================================================
@@ -681,12 +681,12 @@ function renderFluxHero(){
   ).join('');
 
   const calloutMsgs = {
-    '<A': 'Background levels — quiet sun, no flare activity detected.',
-    'A':  'Background levels — quiet sun, no flare activity detected.',
+    '<A': 'Background levels, quiet sun, no flare activity detected.',
+    'A':  'Background levels, quiet sun, no flare activity detected.',
     'B':  'Minor flux elevation. Common, low-impact background activity.',
     'C':  'Small flare activity. Typically minimal effect on Earth.',
-    'M':  'Moderate flare in progress — can cause brief radio blackouts on the sunlit side of Earth.',
-    'X':  'Major flare in progress — can cause strong radio blackouts and is worth immediate attention.'
+    'M':  'Moderate flare in progress, can cause brief radio blackouts on the sunlit side of Earth.',
+    'X':  'Major flare in progress, can cause strong radio blackouts and is worth immediate attention.'
   };
   document.getElementById('readingCallout').innerHTML = `<strong>${cls}-class:</strong> ${calloutMsgs[cls] || calloutMsgs['<A']}`;
 }
