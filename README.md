@@ -1,6 +1,6 @@
 🌞 Embry-Riddle Solar Telescope Forecast Dashboard (STFD)
 
-The Embry-Riddle Aeronautical University Solar Telescope Forecast Dashboard (STFD) is a Python-based web application designed to assist ERAU solar forecasters before, during, and after observation sessions.
+The Embry-Riddle Aeronautical University Solar Telescope Forecast Dashboard (STFD) is a Github web application designed to assist ERAU solar forecasters before, during, and after observation sessions.
 
 Built with the html Github.io website, the dashboard provides a simple, interactive interface that brings together key tools for solar data visualization, forecasting, and observation planning all in one place.
 
@@ -16,3 +16,5 @@ By combining these features into an accessible dashboard, STFD aims to improve e
 - Provide real-time solar forecasting tools for ERAU observers
 - Streamline pre-observation planning and in-session monitoring
 - Encourage open-source collaboration for solar data visualization and forecasting
+
+Made with love for the ☀️
