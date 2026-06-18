@@ -193,11 +193,6 @@ main{ padding: 28px 32px 60px; max-width:1280px; }
 }
 .callout strong{ color:var(--text); }
 
-.kiosk-toggle{
-  display:flex; align-items:center; gap:8px; font-family:var(--font-mono); font-size:11.5px; color:var(--text-dim);
-}
-.kiosk-toggle input{ accent-color:var(--accent); }
-
 /* ============================================================
    PAGE 2 — SKY & CYCLE
    ============================================================ */
@@ -298,16 +293,6 @@ footer.site-footer{ border-top:1px solid var(--line); margin-top:32px; padding-t
   .flux-value{ font-size:32px; }
 }
 
-/* kiosk / front-and-center mode: hide chrome for an unattended display */
-body.kiosk-mode .statusbar,
-body.kiosk-mode .sidenav,
-body.kiosk-mode footer.site-footer,
-body.kiosk-mode .page-head,
-body.kiosk-mode .panel:not(.sun-panel):not(.flux-hero){
-  display:none !important;
-}
-body.kiosk-mode main{ padding:24px; max-width:none; }
-body.kiosk-mode .now-grid{ height:calc(100vh - 48px); }
 </style>
 </head>
 <body>
@@ -352,7 +337,6 @@ body.kiosk-mode .now-grid{ height:calc(100vh - 48px); }
           <h2>Now</h2>
           <p>Live view of the Sun and current X-ray activity. Built to stay open on a screen in the dome &mdash; no clicking required.</p>
         </div>
-        <label class="kiosk-toggle"><input type="checkbox" id="kioskCheck"> Kiosk mode (hide menus)</label>
       </div>
 
       <div class="now-grid">
@@ -563,7 +547,7 @@ const SDO_CHANNELS = [
   { id: '0193', label: '193 Å', desc: 'Corona & hot flare plasma (~1.25M K). Good for spotting flares and coronal holes.' },
   { id: '0304', label: '304 Å', desc: 'Upper chromosphere & prominences (~50,000 K). Shows filaments and prominences.' },
   { id: '0211', label: '211 Å', desc: 'Active regions of the corona (~2M K).' },
-  { id: 'HMIIF', label: 'Visible light', desc: 'HMI intensitygram — the Sun in visible light. Sunspots show up dark here.' }
+  { id: 'HMIIF', label: 'Visible light', desc: 'HMI intensitygram: The Sun in visible light. Sunspots show up dark here.' }
 ];
 let sdoChannelIndex = 0;
 
