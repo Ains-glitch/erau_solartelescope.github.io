@@ -1,0 +1,1434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ERAU Solar Telescope Console</title>
+<!-- Sun emoji favicon via SVG data URI -->
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>☀️</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+
+/* ============================================================
+   TOKENS
+   ============================================================ */
+:root{
+  --bg:            #090d13;
+  --bg-grid:       #0d121a;
+  --panel:         #10161f;
+  --panel-raised:  #141b26;
+  --line:          #1f2937;
+  --line-bright:   #2c3a4e;
+  --text:          #e8edf3;
+  --text-dim:      #7b8794;
+  --text-faint:    #4c5666;
+  --accent:        #3ddbd9;
+  --accent-dim:    #1d6e6d;
+  --accent-glow:   rgba(61, 219, 217, 0.35);
+
+  --c-lt:  #5c6773;
+  --c-a:   #3ddc84;
+  --c-b:   #3da9fc;
+  --c-c:   #f5a623;
+  --c-m:   #ef4444;
+  --c-x:   #b91c1c;
+
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+  --font-sans: 'Inter', -apple-system, sans-serif;
+}
+
+*{ box-sizing:border-box; }
+html{ scroll-behavior:smooth; }
+body{
+  margin:0;
+  background:var(--bg);
+  background-image:
+    linear-gradient(var(--bg-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--bg-grid) 1px, transparent 1px);
+  background-size: 42px 42px;
+  color:var(--text);
+  font-family:var(--font-sans);
+  -webkit-font-smoothing:antialiased;
+}
+@media (prefers-reduced-motion: reduce){
+  *{ animation-duration:0.001ms !important; animation-iteration-count:1 !important; transition-duration:0.001ms !important; scroll-behavior:auto !important; }
+}
+a{ color:var(--accent); text-decoration:none; }
+a:hover{ text-decoration:underline; }
+:focus-visible{ outline: 2px solid var(--accent); outline-offset: 2px; }
+button, input, textarea, select{ font-family:inherit; }
+
+/* ============================================================
+   SHELL
+   ============================================================ */
+.shell{
+  display:grid;
+  grid-template-columns: 210px 1fr;
+  grid-template-rows: auto 1fr;
+  min-height:100vh;
+}
+
+.statusbar{
+  grid-column: 1 / 3;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:24px;
+  padding: 14px 24px;
+  border-bottom:1px solid var(--line);
+  background: linear-gradient(180deg, var(--panel-raised), var(--panel));
+  flex-wrap:wrap;
+}
+.brand{ display:flex; align-items:center; gap:12px; }
+.brand-mark{
+  width:34px; height:34px; border-radius:50%; flex-shrink:0;
+  background: radial-gradient(circle at 35% 30%, #ffe9a8, #f5a623 45%, #b91c1c 100%);
+  box-shadow: 0 0 18px rgba(245,166,35,0.45);
+}
+.brand-text h1{
+  font-family:var(--font-mono); font-size:14px; letter-spacing:0.06em;
+  margin:0; color:var(--text); text-transform:uppercase;
+}
+.brand-text p{ margin:2px 0 0; font-size:11.5px; color:var(--text-dim); font-family:var(--font-mono); letter-spacing:0.03em; }
+.status-readout{ display:flex; align-items:center; gap:18px; font-family:var(--font-mono); font-size:12px; color:var(--text-dim); }
+.status-item{ display:flex; align-items:center; gap:7px; white-space:nowrap; }
+.dot{ width:7px;height:7px;border-radius:50%; background:var(--c-a); box-shadow:0 0 8px var(--c-a); flex-shrink:0; }
+.dot.live{ animation:pulse 2s ease-in-out infinite; }
+@keyframes pulse{ 0%,100%{opacity:1;} 50%{opacity:0.35;} }
+.dot.bad{ background:var(--c-m); box-shadow:0 0 8px var(--c-m); }
+#clockUTC{ color:var(--text); }
+
+.sidenav{
+  border-right:1px solid var(--line);
+  background:var(--panel);
+  padding: 22px 14px;
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+}
+.sidenav-label{
+  font-family:var(--font-mono); font-size:10.5px; letter-spacing:0.12em;
+  color:var(--text-faint); text-transform:uppercase; margin: 4px 10px 10px;
+}
+.navbtn{
+  display:flex; align-items:center; justify-content:space-between; gap:10px;
+  width:100%; text-align:left; background:transparent; border:1px solid transparent;
+  color:var(--text-dim); font-family:var(--font-mono); font-size:13px;
+  padding:10px 12px; border-radius:6px; cursor:pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.navbtn .nb-tag{ font-size:9.5px; padding:2px 6px; border-radius:10px; border:1px solid var(--line-bright); color:var(--text-faint); letter-spacing:0.05em; }
+.navbtn:hover{ background:var(--panel-raised); color:var(--text); }
+.navbtn.active{ background:var(--panel-raised); border-color:var(--line-bright); color:var(--accent); }
+.navbtn.active .nb-tag{ border-color:var(--accent-dim); color:var(--accent); }
+
+.sidenav-footer{
+  margin-top:auto; padding:12px 10px 4px; font-family:var(--font-mono);
+  font-size:10.5px; color:var(--text-faint); line-height:1.6; border-top:1px solid var(--line);
+}
+.sidenav-footer a{ color:var(--text-dim); }
+
+main{ padding: 28px 32px 60px; max-width:1280px; }
+.page{ display:none; }
+.page.active{ display:block; animation:fadeIn 0.25s ease; }
+@keyframes fadeIn{ from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:none;} }
+
+.page-head{ margin-bottom:24px; display:flex; justify-content:space-between; align-items:flex-end; gap:16px; flex-wrap:wrap; }
+.eyebrow{ font-family:var(--font-mono); font-size:11px; letter-spacing:0.14em; text-transform:uppercase; color:var(--accent); margin:0 0 6px; }
+.page-head h2{ font-size:26px; margin:0; font-weight:600; letter-spacing:-0.01em; }
+.page-head p{ color:var(--text-dim); margin:8px 0 0; max-width:640px; font-size:14.5px; line-height:1.6; }
+
+.panel{ background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:20px; }
+.panel-title{
+  font-family:var(--font-mono); font-size:11.5px; letter-spacing:0.08em; text-transform:uppercase;
+  color:var(--text-dim); margin:0 0 16px; display:flex; align-items:center; justify-content:space-between; gap:12px;
+}
+
+/* ============================================================
+   PAGE 1: CURRENT WEATHER CONDITIONS
+   ============================================================ */
+.now-grid{ display:grid; grid-template-columns: 1.15fr 1fr; gap:18px; }
+@media (max-width: 1040px){ .now-grid{ grid-template-columns:1fr; } }
+
+.sun-panel{ position:relative; overflow:hidden; padding:16px; }
+.sun-image-wrap{
+  position:relative; border-radius:8px; overflow:hidden; background:#000;
+  aspect-ratio: 1 / 1; display:flex; align-items:center; justify-content:center;
+}
+.sun-image-wrap img{ width:100%; height:100%; object-fit:contain; display:block; }
+.sun-channel-row{ display:flex; gap:6px; margin-top:12px; flex-wrap:wrap; }
+.chan-btn{
+  font-family:var(--font-mono); font-size:11.5px; background:var(--panel-raised);
+  border:1px solid var(--line); color:var(--text-dim); padding:7px 11px; border-radius:6px; cursor:pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+.chan-btn:hover{ color:var(--text); }
+.chan-btn.active{ border-color:var(--accent); color:var(--accent); }
+.sun-caption{ font-family:var(--font-mono); font-size:11px; color:var(--text-faint); margin-top:10px; line-height:1.6; }
+
+.now-side{ display:flex; flex-direction:column; gap:18px; }
+.flux-hero{ position:relative; overflow:hidden; padding:20px; }
+.flux-hero::before{
+  content:""; position:absolute; inset:0;
+  background: radial-gradient(circle at 85% -10%, var(--accent-glow), transparent 55%); pointer-events:none;
+}
+.flux-top{ display:flex; justify-content:space-between; align-items:flex-start; gap:16px; position:relative; z-index:1; }
+.flux-value{ font-family:var(--font-mono); font-size:42px; font-weight:600; line-height:1; letter-spacing:-0.01em; }
+.flux-unit{ font-size:15px; color:var(--text-dim); font-weight:400; margin-left:6px; }
+.flux-sub{ margin-top:6px; font-family:var(--font-mono); font-size:12px; color:var(--text-dim); }
+.class-badge{
+  font-family:var(--font-mono); font-size:28px; font-weight:700; width:58px; height:58px;
+  border-radius:10px; display:flex; align-items:center; justify-content:center;
+  border:1px solid var(--line-bright); flex-shrink:0;
+}
+#fluxChart{ width:100%; height:160px; display:block; margin-top:14px; }
+
+/* Kp index panel */
+.kp-bar-row{ display:flex; gap:4px; align-items:flex-end; height:80px; margin-top:10px; }
+.kp-bar-wrap{ display:flex; flex-direction:column; align-items:center; gap:4px; flex:1; }
+.kp-bar{ width:100%; border-radius:3px 3px 0 0; transition:background 0.3s; min-height:4px; }
+.kp-bar-label{ font-family:var(--font-mono); font-size:9px; color:var(--text-faint); }
+.kp-now-badge{ display:inline-flex; align-items:center; gap:10px; }
+.kp-big{ font-family:var(--font-mono); font-size:38px; font-weight:700; line-height:1; }
+.kp-scale{ display:flex; gap:6px; margin-top:8px; flex-wrap:wrap; font-family:var(--font-mono); font-size:10px; color:var(--text-faint); }
+.kp-scale span{ display:flex; align-items:center; gap:4px; }
+.kp-swatch{ width:10px; height:10px; border-radius:2px; display:inline-block; }
+
+.quickfact{ display:flex; justify-content:space-between; align-items:center; padding:9px 0; border-bottom:1px solid var(--line); font-size:13px; }
+.quickfact:last-child{ border-bottom:none; }
+.quickfact .qf-label{ color:var(--text-dim); }
+.quickfact .qf-value{ font-family:var(--font-mono); font-weight:600; text-align:right; }
+
+.callout{
+  border:1px solid var(--line); border-left:3px solid var(--accent); background:var(--panel-raised);
+  border-radius:0 8px 8px 0; padding:13px 15px; font-size:13px; line-height:1.6; color:var(--text-dim);
+}
+.callout strong{ color:var(--text); }
+
+.kiosk-toggle{
+  display:flex; align-items:center; gap:8px; font-family:var(--font-mono); font-size:11.5px; color:var(--text-dim);
+}
+.kiosk-toggle input{ accent-color:var(--accent); }
+
+/* ============================================================
+   IMAGE COMPARE SLIDER
+   ============================================================ */
+.compare-wrap{
+  position:relative; border-radius:8px; overflow:hidden; background:#000;
+  aspect-ratio:1/1; display:flex; align-items:center; justify-content:center;
+  cursor:col-resize; user-select:none;
+}
+.compare-img-base,
+.compare-img-overlay{
+  position:absolute; inset:0; width:100%; height:100%; object-fit:contain;
+}
+.compare-img-overlay{
+  clip-path:inset(0 50% 0 0);
+}
+.compare-divider{
+  position:absolute; top:0; bottom:0; width:2px; background:var(--accent);
+  left:50%; transform:translateX(-50%); pointer-events:none; z-index:10;
+}
+.compare-divider::before{
+  content:''; position:absolute; top:50%; left:50%;
+  transform:translate(-50%,-50%);
+  width:28px; height:28px; border-radius:50%;
+  background:var(--accent); opacity:0.9;
+  box-shadow:0 0 12px var(--accent-glow);
+}
+.compare-divider::after{
+  content:'◀ ▶'; position:absolute; top:50%; left:50%;
+  transform:translate(-50%,-50%);
+  font-size:9px; color:var(--bg); font-family:var(--font-mono); font-weight:700; letter-spacing:-1px;
+}
+.compare-label-l,
+.compare-label-r{
+  position:absolute; bottom:10px; font-family:var(--font-mono); font-size:11px;
+  background:rgba(9,13,19,0.75); padding:4px 8px; border-radius:4px;
+  pointer-events:none; z-index:11; color:var(--text);
+}
+.compare-label-l{ left:10px; }
+.compare-label-r{ right:10px; }
+
+.compare-controls{ display:flex; gap:10px; margin-top:12px; flex-wrap:wrap; align-items:center; }
+.compare-select{
+  background:var(--panel-raised); border:1px solid var(--line-bright); color:var(--text);
+  font-family:var(--font-mono); font-size:12px; padding:6px 10px; border-radius:6px; cursor:pointer;
+  flex:1; min-width:110px;
+}
+.compare-select:focus{ border-color:var(--accent); outline:none; }
+.compare-vs{ font-family:var(--font-mono); font-size:11px; color:var(--text-faint); flex-shrink:0; }
+
+/* ============================================================
+   PAGE 2: SKY & CYCLE
+   ============================================================ */
+.sky-grid{ display:grid; grid-template-columns: 1fr 1fr; gap:18px; }
+@media (max-width: 1040px){ .sky-grid{ grid-template-columns:1fr; } }
+
+.sun-times{ display:grid; grid-template-columns: 1fr 1fr; gap:14px; margin-bottom:16px; }
+.time-card{ background:var(--panel-raised); border:1px solid var(--line); border-radius:8px; padding:16px; text-align:center; }
+.time-card .tc-label{ font-family:var(--font-mono); font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:var(--text-faint); }
+.time-card .tc-value{ font-family:var(--font-mono); font-size:26px; font-weight:600; margin-top:6px; color:var(--accent); }
+.time-card .tc-sub{ font-size:11.5px; color:var(--text-dim); margin-top:4px; }
+
+.daylength-bar{ position:relative; height:10px; border-radius:5px; background:var(--line); overflow:hidden; margin:14px 0 6px; }
+.daylength-fill{ position:absolute; top:0; left:0; height:100%; background:linear-gradient(90deg, var(--c-c), var(--accent)); }
+.daylength-label{ font-family:var(--font-mono); font-size:11.5px; color:var(--text-dim); text-align:center; }
+
+#cycleChart{ width:100%; height:280px; display:block; }
+.cycle-legend{ display:flex; gap:14px; margin-top:10px; flex-wrap:wrap; font-family:var(--font-mono); font-size:11px; color:var(--text-dim); }
+.cycle-legend span{ display:flex; align-items:center; gap:6px; }
+.cycle-legend .sw{ width:14px; height:3px; display:inline-block; border-radius:2px; }
+
+/* ============================================================
+   PAGE 3: SUBMISSIONS
+   ============================================================ */
+.sub-grid{ display:grid; grid-template-columns: 1fr 1fr; gap:18px; }
+@media (max-width: 1040px){ .sub-grid{ grid-template-columns:1fr; } }
+
+.form-field{ margin-bottom:16px; }
+.form-field label{ display:block; font-family:var(--font-mono); font-size:11.5px; letter-spacing:0.04em; color:var(--text-dim); margin-bottom:6px; }
+.form-field input, .form-field textarea{
+  width:100%; background:var(--panel-raised); border:1px solid var(--line-bright); border-radius:6px;
+  padding:10px 12px; color:var(--text); font-size:13.5px; font-family:var(--font-sans);
+}
+.form-field input:focus, .form-field textarea:focus{ border-color:var(--accent); }
+.form-field textarea{ min-height:110px; resize:vertical; }
+.form-hint{ font-size:11.5px; color:var(--text-faint); margin-top:5px; }
+
+.btn{
+  font-family:var(--font-mono); font-size:12.5px; background:var(--panel-raised); color:var(--text);
+  border:1px solid var(--line-bright); border-radius:6px; padding:9px 16px; cursor:pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+.btn:hover{ border-color:var(--accent); color:var(--accent); }
+.btn:disabled{ opacity:0.4; cursor:default; }
+.btn-primary{ border-color:var(--accent-dim); color:var(--accent); }
+.btn-primary:hover{ border-color:var(--accent); }
+
+.gallery-note{
+  border:1px solid var(--line); border-left:3px solid var(--c-c); background:var(--panel-raised);
+  border-radius:0 8px 8px 0; padding:13px 15px; font-size:13px; line-height:1.65; color:var(--text-dim); margin-bottom:16px;
+}
+
+.step-list{ list-style:none; margin:0; padding:0; counter-reset: step; }
+.step-list li{ position:relative; padding-left:34px; margin-bottom:14px; font-size:13.5px; color:var(--text-dim); line-height:1.5; }
+.step-list li::before{
+  counter-increment: step; content: counter(step);
+  position:absolute; left:0; top:-1px; width:22px; height:22px; border-radius:50%;
+  border:1px solid var(--line-bright); color:var(--accent); font-family:var(--font-mono); font-size:11px;
+  display:flex; align-items:center; justify-content:center;
+}
+
+/* ============================================================
+   PAGE 4: DATA
+   ============================================================ */
+.data-grid{ display:grid; grid-template-columns: 1fr 1fr; gap:18px; }
+@media (max-width: 1040px){ .data-grid{ grid-template-columns:1fr; } }
+
+table.swpc-table{ width:100%; border-collapse:collapse; font-size:12.5px; }
+table.swpc-table th{
+  text-align:left; font-family:var(--font-mono); font-size:10.5px; letter-spacing:0.05em; text-transform:uppercase;
+  color:var(--text-faint); padding:8px 10px; border-bottom:1px solid var(--line-bright);
+}
+table.swpc-table td{ padding:8px 10px; border-bottom:1px solid var(--line); font-family:var(--font-mono); color:var(--text-dim); }
+table.swpc-table tr:hover td{ color:var(--text); }
+
+.download-row{ display:flex; gap:10px; flex-wrap:wrap; margin-bottom:6px; }
+pre.raw-feed{
+  background:#06090e; border:1px solid var(--line); border-radius:8px; padding:16px;
+  font-family:var(--font-mono); font-size:11px; line-height:1.6; color:var(--text-dim);
+  max-height:380px; overflow:auto; white-space:pre-wrap;
+}
+
+.skeleton{ color:var(--text-faint); font-family:var(--font-mono); font-size:12.5px; display:flex; align-items:center; gap:8px; }
+.spinner{ width:12px; height:12px; border-radius:50%; border:2px solid var(--line-bright); border-top-color:var(--accent); animation:spin 0.8s linear infinite; flex-shrink:0; }
+@keyframes spin{ to{ transform:rotate(360deg); } }
+
+.error-box{ border:1px solid var(--c-m); background: rgba(239,68,68,0.08); color: #f3a9a9; border-radius:8px; padding:14px 16px; font-size:13px; font-family:var(--font-mono); }
+
+footer.site-footer{ border-top:1px solid var(--line); margin-top:32px; padding-top:18px; font-family:var(--font-mono); font-size:11px; color:var(--text-faint); }
+
+/* ============================================================
+   PAGE 5: ABOUT
+   ============================================================ */
+.about-grid{ display:grid; grid-template-columns: 1fr 1fr; gap:18px; }
+@media (max-width: 1040px){ .about-grid{ grid-template-columns:1fr; } }
+
+.about-photo-grid{ display:grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap:12px; margin-top:16px; }
+.about-photo-slot{
+  aspect-ratio:4/3; border-radius:8px; border:1px dashed var(--line-bright);
+  background:var(--panel-raised); display:flex; flex-direction:column;
+  align-items:center; justify-content:center; gap:8px;
+  font-family:var(--font-mono); font-size:11px; color:var(--text-faint);
+}
+.about-photo-slot span{ font-size:22px; }
+
+.timeline{ margin:0; padding:0; list-style:none; }
+.timeline li{
+  position:relative; padding-left:28px; padding-bottom:18px;
+  border-left:1px solid var(--line-bright); margin-left:8px;
+  font-size:13.5px; color:var(--text-dim); line-height:1.55;
+}
+.timeline li:last-child{ border-left-color:transparent; padding-bottom:0; }
+.timeline li::before{
+  content:''; position:absolute; left:-5px; top:4px;
+  width:9px; height:9px; border-radius:50%;
+  background:var(--accent); border:2px solid var(--bg);
+}
+.tl-year{ font-family:var(--font-mono); font-size:11px; color:var(--accent); display:block; margin-bottom:4px; }
+
+/* ============================================================
+   PAGE 6: SOLAR FEATURES
+   ============================================================ */
+.features-grid{ display:grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap:20px; }
+
+.feature-card{
+  background:var(--panel); border:1px solid var(--line); border-radius:10px; overflow:hidden;
+  display:flex; flex-direction:column;
+}
+.feature-card-img{
+  width:100%; aspect-ratio:1/1; object-fit:contain; background:#000;
+  display:block;
+}
+.feature-card-img-placeholder{
+  width:100%; aspect-ratio:1/1; background: radial-gradient(circle at 40% 40%, #1a1020, #090d13);
+  display:flex; align-items:center; justify-content:center;
+  font-size:48px;
+}
+.feature-card-body{ padding:16px; flex:1; display:flex; flex-direction:column; gap:8px; }
+.feature-card-title{ font-family:var(--font-mono); font-size:13px; font-weight:700; color:var(--text); letter-spacing:0.04em; text-transform:uppercase; }
+.feature-card-wave{ font-family:var(--font-mono); font-size:10.5px; color:var(--accent); }
+.feature-card-desc{ font-size:13px; color:var(--text-dim); line-height:1.6; flex:1; }
+.feature-card-tags{ display:flex; gap:6px; flex-wrap:wrap; margin-top:4px; }
+.feature-tag{
+  font-family:var(--font-mono); font-size:10px; padding:2px 7px; border-radius:10px;
+  border:1px solid var(--line-bright); color:var(--text-faint);
+}
+
+/* mobile */
+@media (max-width: 760px){
+  .shell{ grid-template-columns:1fr; }
+  .sidenav{ flex-direction:row; overflow-x:auto; border-right:none; border-bottom:1px solid var(--line); padding:12px; }
+  .sidenav-label, .sidenav-footer{ display:none; }
+  .navbtn{ flex-shrink:0; }
+  main{ padding:20px 16px 40px; }
+  .flux-value{ font-size:32px; }
+}
+
+/* kiosk / front-and-center mode */
+body.kiosk-mode .statusbar,
+body.kiosk-mode .sidenav,
+body.kiosk-mode footer.site-footer,
+body.kiosk-mode .page-head,
+body.kiosk-mode .panel:not(.sun-panel):not(.flux-hero){
+  display:none !important;
+}
+body.kiosk-mode main{ padding:24px; max-width:none; }
+body.kiosk-mode .now-grid{ height:calc(100vh - 48px); }
+</style>
+</head>
+<body>
+
+<div class="shell">
+
+  <div class="statusbar">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true"></div>
+      <div class="brand-text">
+        <h1>ERAU Solar Telescope Console</h1>
+        <p>GOES-18 X-Ray Monitor &middot; NOAA SWPC &amp; NASA SDO Feeds</p>
+      </div>
+    </div>
+    <div class="status-readout">
+      <div class="status-item"><span class="dot live" id="liveDot"></span><span id="connState">Connecting&hellip;</span></div>
+      <div class="status-item"><span>UTC</span><span id="clockUTC">--:--:--</span></div>
+      <div class="status-item"><span id="lastUpdated">Last sync: &mdash;</span></div>
+    </div>
+  </div>
+
+  <nav class="sidenav" aria-label="Dashboard sections">
+    <div class="sidenav-label">Channels</div>
+    <button class="navbtn active" data-page="now">Current Weather Conditions <span class="nb-tag">LIVE</span></button>
+    <button class="navbtn" data-page="compare">Image Compare</button>
+    <button class="navbtn" data-page="sky">Sky &amp; Cycle</button>
+    <button class="navbtn" data-page="submit">Submissions</button>
+    <button class="navbtn" data-page="data">Data</button>
+    <button class="navbtn" data-page="features">Solar Features</button>
+    <button class="navbtn" data-page="about">About</button>
+    <div class="sidenav-footer">
+      Built for ERAU Solar Observers.<br>
+      Issues &rarr; <a href="mailto:a.helgerson@ufl.edu">a.helgerson@ufl.edu</a><br>
+      Data: NOAA SWPC &amp; NASA SDO, public feeds.
+    </div>
+  </nav>
+
+  <main>
+
+    <!-- ============================ PAGE 1: CURRENT WEATHER CONDITIONS ============================ -->
+    <section class="page active" id="page-now">
+      <div class="page-head">
+        <div>
+          <p class="eyebrow">Front &amp; Center</p>
+          <h2>Current Weather Conditions</h2>
+          <p>Live view of the Sun and current X-ray activity. Built to stay open on a screen in the control room; no clicking required.</p>
+        </div>
+        <label class="kiosk-toggle"><input type="checkbox" id="kioskCheck"> Kiosk mode (hide menus)</label>
+      </div>
+
+      <div class="now-grid">
+        <div class="panel sun-panel">
+          <p class="panel-title">Sun Now &mdash; NASA SDO</p>
+          <div class="sun-image-wrap">
+            <img id="sunImg" src="" alt="Live image of the Sun from NASA's Solar Dynamics Observatory">
+          </div>
+          <div class="sun-channel-row" id="sunChannelRow"></div>
+          <p class="sun-caption" id="sunCaption">Loading channel info&hellip;</p>
+        </div>
+
+        <div class="now-side">
+          <div class="panel flux-hero">
+            <div class="flux-top">
+              <div>
+                <div class="flux-value" id="fluxValue">&mdash;<span class="flux-unit">W/m&sup2;</span></div>
+                <div class="flux-sub" id="fluxSub">Awaiting telemetry&hellip;</div>
+              </div>
+              <div class="class-badge" id="classBadge">&mdash;</div>
+            </div>
+            <svg id="fluxChart" viewBox="0 0 900 160" preserveAspectRatio="none"></svg>
+          </div>
+
+          <!-- Kp Index Panel -->
+          <div class="panel">
+            <p class="panel-title">Planetary Kp Index <span style="color:var(--text-faint);font-size:10px;font-weight:400">NOAA SWPC</span></p>
+            <div class="kp-now-badge">
+              <div class="kp-big" id="kpBig">--</div>
+              <div>
+                <div id="kpDesc" style="font-size:13px;color:var(--text-dim);margin-bottom:4px;">Loading&hellip;</div>
+                <div id="kpTime" style="font-family:var(--font-mono);font-size:10.5px;color:var(--text-faint);">--</div>
+              </div>
+            </div>
+            <div class="kp-bar-row" id="kpBarRow">
+              <div class="skeleton"><span class="spinner"></span>Loading Kp data&hellip;</div>
+            </div>
+            <div class="kp-scale">
+              <span><span class="kp-swatch" style="background:#3ddc84"></span>0-3 Quiet</span>
+              <span><span class="kp-swatch" style="background:#f5a623"></span>4-5 Active</span>
+              <span><span class="kp-swatch" style="background:#ef4444"></span>6-7 Storm</span>
+              <span><span class="kp-swatch" style="background:#b91c1c"></span>8-9 Severe</span>
+            </div>
+          </div>
+
+          <div class="panel">
+            <p class="panel-title">Quick Facts</p>
+            <div id="quickFacts">
+              <div class="quickfact"><span class="qf-label">Status</span><span class="qf-value">Loading&hellip;</span></div>
+            </div>
+          </div>
+
+          <div class="panel callout" id="readingCallout">
+            Flux readings update automatically from NOAA GOES-18.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================ PAGE: IMAGE COMPARE ============================ -->
+    <section class="page" id="page-compare">
+      <div class="page-head">
+        <div>
+          <p class="eyebrow">AIA Comparison</p>
+          <h2>Image Compare</h2>
+          <p>Drag the slider to compare two SDO AIA wavelengths side by side. Select any two channels from the dropdowns below.</p>
+        </div>
+      </div>
+
+      <div class="panel" style="max-width:700px;">
+        <p class="panel-title">SDO AIA Sliding Comparison</p>
+        <div class="compare-wrap" id="compareWrap">
+          <img class="compare-img-base" id="compareBase" src="" alt="Base SDO channel">
+          <img class="compare-img-overlay" id="compareOverlay" src="" alt="Overlay SDO channel">
+          <div class="compare-divider" id="compareDivider"></div>
+          <div class="compare-label-l" id="compareLabelL">171 &#8491;</div>
+          <div class="compare-label-r" id="compareLabelR">193 &#8491;</div>
+        </div>
+        <div class="compare-controls">
+          <select class="compare-select" id="compareSelL" aria-label="Left channel"></select>
+          <span class="compare-vs">vs</span>
+          <select class="compare-select" id="compareSelR" aria-label="Right channel"></select>
+        </div>
+        <p class="sun-caption" style="margin-top:10px;">Images from NASA SDO/AIA. Updates every 5 minutes. Drag the center line left or right to reveal each channel.</p>
+      </div>
+    </section>
+
+    <!-- ============================ PAGE 2: SKY & CYCLE ============================ -->
+    <section class="page" id="page-sky">
+      <div class="page-head">
+        <div>
+          <p class="eyebrow">Channel 02</p>
+          <h2>Sky &amp; Cycle</h2>
+          <p>Sunrise/sunset for Daytona Beach, FL, and where we currently stand in Solar Cycle 25.</p>
+        </div>
+      </div>
+
+      <div class="sky-grid">
+        <div class="panel">
+          <p class="panel-title">Sun Times &mdash; Daytona Beach, FL</p>
+          <div class="sun-times">
+            <div class="time-card"><div class="tc-label">Sunrise</div><div class="tc-value" id="sunriseVal">--:--</div><div class="tc-sub" id="sunriseSub">Local time</div></div>
+            <div class="time-card"><div class="tc-label">Sunset</div><div class="tc-value" id="sunsetVal">--:--</div><div class="tc-sub" id="sunsetSub">Local time</div></div>
+          </div>
+          <div class="daylength-bar"><div class="daylength-fill" id="daylengthFill" style="width:0%"></div></div>
+          <div class="daylength-label" id="daylengthLabel">Calculating day length&hellip;</div>
+          <p class="form-hint" style="margin-top:14px;">Computed client-side from solar position equations for 29.21&deg;N, 81.02&deg;W. Times are approximate (&plusmn;1&ndash;2 min) and do not yet account for local horizon obstructions.</p>
+        </div>
+
+        <div class="panel">
+          <p class="panel-title">Solar Cycle 25 Progress</p>
+          <svg id="cycleChart" viewBox="0 0 600 280" preserveAspectRatio="none"></svg>
+          <div class="cycle-legend">
+            <span><span class="sw" style="background:var(--text-faint)"></span>Observed monthly SSN</span>
+            <span><span class="sw" style="background:var(--accent)"></span>13-month smoothed</span>
+          </div>
+          <p class="form-hint" id="cycleSummary" style="margin-top:12px;">Loading observed solar cycle indices from NOAA&hellip;</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================ PAGE 3: SUBMISSIONS ============================ -->
+    <section class="page" id="page-submit">
+      <div class="page-head">
+        <div>
+          <p class="eyebrow">Channel 03</p>
+          <h2>Submissions</h2>
+          <p>Captured something good on the heliostat? Here's how to get it added to the site.</p>
+        </div>
+      </div>
+
+      <div class="sub-grid">
+        <div class="panel">
+          <p class="panel-title">What to send</p>
+          <div class="gallery-note">
+            This page does not have a live upload system yet, so submissions go by email and get added by hand. Send the items below to <strong style="color:var(--text)">a.helgerson@ufl.edu</strong> and it will be reviewed and posted to the site.
+          </div>
+
+          <ol class="step-list">
+            <li><strong>Your name, major, and year</strong>: So the project can be credited (this can include advisors).</li>
+            <li><strong>Project title</strong>: A short name for what you observed or built.</li>
+            <li><strong>Observation date</strong>: When the data or images were captured.</li>
+            <li><strong>Description</strong>: What you observed, heliostat settings used, conditions, and anything notable about the session.</li>
+            <li><strong>Images and/or data files</strong>: Attach directly to the email. Original resolution images work best.</li>
+          </ol>
+        </div>
+
+        <div class="panel">
+          <p class="panel-title">Submit by email</p>
+          <p style="color:var(--text-dim); font-size:13.5px; line-height:1.7; margin:0 0 16px;">
+            Put together the items on the left and email them to:
+          </p>
+          <div class="time-card" style="margin-bottom:16px;">
+            <div class="tc-label">Send to</div>
+            <div class="tc-value" style="font-size:18px; word-break:break-all;"><a href="mailto:a.helgerson@ufl.edu">a.helgerson@ufl.edu</a></div>
+          </div>
+          <p class="form-hint">Copy the address above into your email client to get started.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================ PAGE 4: DATA ============================ -->
+    <section class="page" id="page-data">
+      <div class="page-head">
+        <div>
+          <p class="eyebrow">Channel 04</p>
+          <h2>Data</h2>
+          <p>Download the live GOES-18 X-ray flux feed for your own analysis.</p>
+        </div>
+      </div>
+
+      <div class="data-grid">
+        <div class="panel">
+          <p class="panel-title">
+            Download
+            <button class="btn" id="refreshDataBtn">Refresh feed</button>
+          </p>
+          <p class="form-hint" style="margin-bottom:14px;">Exports the most recent 24 hours of GOES-18 X-ray flux currently loaded in this dashboard (both long and short channel records).</p>
+          <div class="download-row">
+            <button class="btn btn-primary" id="downloadCsvBtn">Download CSV</button>
+            <button class="btn btn-primary" id="downloadJsonBtn">Download JSON</button>
+          </div>
+        </div>
+
+        <div class="panel">
+          <p class="panel-title">Recent Flux Measurements (long channel)</p>
+          <div id="tableHost">
+            <p class="skeleton"><span class="spinner"></span>Loading table&hellip;</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel" style="margin-top:18px;">
+        <p class="panel-title">Raw JSON (last 30 records)</p>
+        <pre class="raw-feed" id="rawJson">Loading&hellip;</pre>
+      </div>
+    </section>
+
+    <!-- ============================ PAGE 5: SOLAR FEATURES ============================ -->
+    <section class="page" id="page-features">
+      <div class="page-head">
+        <div>
+          <p class="eyebrow">Reference</p>
+          <h2>Solar Features</h2>
+          <p>What to look for when observing the Sun. Each feature below is visible in specific SDO AIA wavelengths or in white light. Images are pulled live from NASA SDO.</p>
+        </div>
+      </div>
+
+      <div class="features-grid">
+
+        <div class="feature-card">
+          <img class="feature-card-img" src="https://sdo.gsfc.nasa.gov/assets/img/latest/latest_1024_0304.jpg" alt="Prominences visible in 304 Angstrom" loading="lazy">
+          <div class="feature-card-body">
+            <div class="feature-card-title">Prominences</div>
+            <div class="feature-card-wave">Best seen: 304 &#8491; (He II)</div>
+            <div class="feature-card-desc">Large, bright, dense structures of plasma suspended in the corona above the solar limb, anchored to the surface by magnetic fields. Prominences can last for weeks before destabilizing. When seen against the solar disk rather than the limb they appear dark and are called filaments.</div>
+            <div class="feature-card-tags">
+              <span class="feature-tag">Chromosphere</span>
+              <span class="feature-tag">Magnetic</span>
+              <span class="feature-tag">Long-lived</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="feature-card">
+          <img class="feature-card-img" src="https://sdo.gsfc.nasa.gov/assets/img/latest/latest_1024_0304.jpg" alt="Filaments in 304 Angstrom" loading="lazy">
+          <div class="feature-card-body">
+            <div class="feature-card-title">Filaments</div>
+            <div class="feature-card-wave">Best seen: 304 &#8491; and 171 &#8491;</div>
+            <div class="feature-card-desc">The same structures as prominences, but viewed against the solar disk. They appear as dark, elongated ribbons threading across the chromosphere. Filaments follow magnetic polarity inversion lines (PILs) and are excellent tracers of subsurface magnetic complexity. A disappearing filament (filament eruption) often precedes a coronal mass ejection (CME).</div>
+            <div class="feature-card-tags">
+              <span class="feature-tag">Chromosphere</span>
+              <span class="feature-tag">CME Precursor</span>
+              <span class="feature-tag">Polarity Inversion</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="feature-card">
+          <img class="feature-card-img" src="https://sdo.gsfc.nasa.gov/assets/img/latest/latest_1024_HMIIF.jpg" alt="Sunspots in white light" loading="lazy">
+          <div class="feature-card-body">
+            <div class="feature-card-title">Sunspots</div>
+            <div class="feature-card-wave">Best seen: HMI White Light (Visible)</div>
+            <div class="feature-card-desc">Dark regions on the photosphere where intense magnetic field bundles suppress convection, causing localised cooling (around 3,500 K vs. the photospheric average of 5,778 K). Sunspots appear in pairs or groups of opposite magnetic polarity. Their count is a key indicator of the phase of the 11-year solar cycle. Complex spot groups (delta configurations) are most likely to produce X-class flares.</div>
+            <div class="feature-card-tags">
+              <span class="feature-tag">Photosphere</span>
+              <span class="feature-tag">Solar Cycle</span>
+              <span class="feature-tag">Flare Source</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="feature-card">
+          <img class="feature-card-img" src="https://sdo.gsfc.nasa.gov/assets/img/latest/latest_1024_0193.jpg" alt="Solar flare in 193 Angstrom" loading="lazy">
+          <div class="feature-card-body">
+            <div class="feature-card-title">Solar Flares</div>
+            <div class="feature-card-wave">Best seen: 193 &#8491; and 131 &#8491;</div>
+            <div class="feature-card-desc">Sudden, intense brightenings in the solar atmosphere caused by the rapid release of magnetic energy stored in active regions. Classified A through X by their peak X-ray flux in the 1 to 8 &#8491; band (see the GOES X-ray panel on this site). X-class flares can cause HF radio blackouts on the sunlit side of Earth. They are often accompanied by CMEs and energetic particle events.</div>
+            <div class="feature-card-tags">
+              <span class="feature-tag">Corona</span>
+              <span class="feature-tag">X-Ray</span>
+              <span class="feature-tag">Radio Blackout</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="feature-card">
+          <img class="feature-card-img" src="https://sdo.gsfc.nasa.gov/assets/img/latest/latest_1024_0193.jpg" alt="Coronal holes in 193 Angstrom" loading="lazy">
+          <div class="feature-card-body">
+            <div class="feature-card-title">Coronal Holes</div>
+            <div class="feature-card-wave">Best seen: 193 &#8491; and 211 &#8491;</div>
+            <div class="feature-card-desc">Large, dark regions of the corona where magnetic field lines are open and extend outward into the heliosphere rather than looping back to the surface. Fast solar wind streams (600 to 800 km/s) flow freely out of coronal holes. When a coronal hole faces Earth, the arriving high-speed stream can enhance geomagnetic activity 3 to 4 days later and drive elevated Kp indices.</div>
+            <div class="feature-card-tags">
+              <span class="feature-tag">Corona</span>
+              <span class="feature-tag">Open Field</span>
+              <span class="feature-tag">Fast Wind</span>
+              <span class="feature-tag">Kp Driver</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="feature-card">
+          <img class="feature-card-img" src="https://sdo.gsfc.nasa.gov/assets/img/latest/latest_1024_0171.jpg" alt="Coronal loops in 171 Angstrom" loading="lazy">
+          <div class="feature-card-body">
+            <div class="feature-card-title">Coronal Loops</div>
+            <div class="feature-card-wave">Best seen: 171 &#8491; and 211 &#8491;</div>
+            <div class="feature-card-desc">Arching structures of hot plasma (1 to 3 million K) that trace closed magnetic field lines connecting regions of opposite polarity on the photosphere. Coronal loops are the building blocks of active regions and prominences. Their brightness indicates concentrated magnetic flux. Destabilising loops can reconnect and release energy as flares or eruptive events.</div>
+            <div class="feature-card-tags">
+              <span class="feature-tag">Corona</span>
+              <span class="feature-tag">Closed Field</span>
+              <span class="feature-tag">Active Regions</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="feature-card">
+          <img class="feature-card-img" src="https://sdo.gsfc.nasa.gov/assets/img/latest/latest_1024_0171.jpg" alt="Active regions in 171 Angstrom" loading="lazy">
+          <div class="feature-card-body">
+            <div class="feature-card-title">Active Regions</div>
+            <div class="feature-card-wave">Best seen: 171 &#8491;, 193 &#8491;, 211 &#8491;</div>
+            <div class="feature-card-desc">Concentrated areas of strong, complex magnetic field on the Sun, often surrounding sunspot groups. Active regions are the primary sites of flares, CMEs, and other energetic events. NOAA assigns numbered designations (e.g., AR 3800) and tracks them across the solar disk. Their evolution from emergence to decay governs much of the short-term space weather threat.</div>
+            <div class="feature-card-tags">
+              <span class="feature-tag">Photosphere to Corona</span>
+              <span class="feature-tag">NOAA Numbered</span>
+              <span class="feature-tag">Space Weather</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="feature-card">
+          <img class="feature-card-img" src="https://sdo.gsfc.nasa.gov/assets/img/latest/latest_1024_HMIB.jpg" alt="Magnetic field map from HMI" loading="lazy">
+          <div class="feature-card-body">
+            <div class="feature-card-title">Magnetic Field (Magnetogram)</div>
+            <div class="feature-card-wave">Best seen: HMI Magnetogram</div>
+            <div class="feature-card-desc">The HMI magnetogram maps the line-of-sight component of the photospheric magnetic field. White (positive polarity) and dark (negative polarity) regions show where field lines emerge and return. Closely interlaced opposite-polarity regions indicate stored magnetic energy and potential for eruption. Magnetograms are the foundation of all solar activity forecasting.</div>
+            <div class="feature-card-tags">
+              <span class="feature-tag">Photosphere</span>
+              <span class="feature-tag">Polarity</span>
+              <span class="feature-tag">Forecasting</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="feature-card">
+          <img class="feature-card-img" src="https://sdo.gsfc.nasa.gov/assets/img/latest/latest_1024_1600.jpg" alt="Flare ribbons in 1600 Angstrom" loading="lazy">
+          <div class="feature-card-body">
+            <div class="feature-card-title">Flare Ribbons</div>
+            <div class="feature-card-wave">Best seen: 1600 &#8491; (UV Continuum)</div>
+            <div class="feature-card-desc">Bright, elongated brightening that appear on either side of a magnetic polarity inversion line during and after a flare. They form as energetic particles and radiation accelerated during magnetic reconnection rain down along field lines, heating the chromosphere. The separation speed and brightness of ribbons correlates with flare intensity and the rate of reconnection.</div>
+            <div class="feature-card-tags">
+              <span class="feature-tag">Chromosphere</span>
+              <span class="feature-tag">Reconnection</span>
+              <span class="feature-tag">UV</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="panel callout" style="margin-top:20px; border-left-color:var(--c-c);">
+        <strong>Note on SunPy automated detection:</strong> Automated feature detection (filament tracing, active region segmentation, coronal hole detection) can be done with <a href="https://sunpy.org" target="_blank" rel="noopener">SunPy</a> and the <a href="https://docs.sunpy.org/en/stable/how_to/index.html" target="_blank" rel="noopener">SunPy documentation</a>. Because SunPy is a Python library that runs server-side, it requires a backend (e.g., a Python/Flask server or Jupyter notebook) that downloads FITS files from the <a href="https://jsoc.stanford.edu/" target="_blank" rel="noopener">JSOC data archive</a> and runs detection algorithms such as the CHIMERA coronal hole finder or SMART active region detection. If you would like this integrated, the team can set up a GitHub Action or small server script that runs SunPy nightly and outputs annotated images into the repository.
+      </div>
+    </section>
+
+    <!-- ============================ PAGE 6: ABOUT ============================ -->
+    <section class="page" id="page-about">
+      <div class="page-head">
+        <div>
+          <p class="eyebrow">ERAU Solar Observatory</p>
+          <h2>About</h2>
+          <p>History, assembly, and team behind the ERAU solar telescope and heliostat system.</p>
+        </div>
+      </div>
+
+      <div class="about-grid">
+        <div class="panel">
+          <p class="panel-title">Instrument History</p>
+          <ul class="timeline">
+            <li>
+              <span class="tl-year">Origin</span>
+              The ERAU solar telescope program began as a student-led initiative to bring ground-based solar observation to the Embry-Riddle Aeronautical University campus in Daytona Beach, FL.
+            </li>
+            <li>
+              <span class="tl-year">Assembly</span>
+              The heliostat system was assembled and aligned by undergraduate students in the Department of Physical Sciences. A heliostat uses a motorized flat mirror to track the Sun and feed a fixed telescope, allowing safe, stable observations throughout the day.
+            </li>
+            <li>
+              <span class="tl-year">Commissioning</span>
+              First light was achieved following polar alignment and optical calibration. The telescope produces solar images in narrowband H-alpha as well as white light, enabling observation of sunspots, prominences, and chromospheric features.
+            </li>
+            <li>
+              <span class="tl-year">This Console</span>
+              The web console was developed to complement ground-based observations with live space weather data from NOAA SWPC and NASA SDO, giving observers real-time context for what they see through the eyepiece.
+            </li>
+            <li>
+              <span class="tl-year">Ongoing</span>
+              Student observers submit images and reports through the Submissions page. The program is open to all ERAU students and welcomes collaboration with faculty and visiting researchers.
+            </li>
+          </ul>
+        </div>
+
+        <div>
+          <div class="panel" style="margin-bottom:18px;">
+            <p class="panel-title">The Instrument</p>
+            <div style="color:var(--text-dim); font-size:13.5px; line-height:1.7;">
+              <p style="margin:0 0 10px;">The ERAU solar telescope uses a heliostat design: a motorized flat mirror tracks the Sun and redirects sunlight into a fixed optical path. This allows a large, heavy telescope to remain stationary while the moving mirror does the tracking work.</p>
+              <p style="margin:0;">Observers can view the Sun in H-alpha (656.3 nm), which highlights chromospheric features like filaments, prominences, and flares. White-light viewing reveals sunspots and granulation on the photosphere.</p>
+            </div>
+          </div>
+
+          <div class="panel">
+            <p class="panel-title">Photo Gallery <span style="color:var(--text-faint);font-size:10px;font-weight:400">Add images to repository to populate</span></p>
+            <div class="about-photo-grid">
+              <div class="about-photo-slot">
+                <span>🔭</span>
+                <div>telescope_full.jpg</div>
+              </div>
+              <div class="about-photo-slot">
+                <span>🪞</span>
+                <div>heliostat_mirror.jpg</div>
+              </div>
+              <div class="about-photo-slot">
+                <span>🌞</span>
+                <div>first_light.jpg</div>
+              </div>
+              <div class="about-photo-slot">
+                <span>🎓</span>
+                <div>team_photo.jpg</div>
+              </div>
+            </div>
+            <p class="form-hint" style="margin-top:12px;">To add photos: upload image files to your GitHub repository (e.g., in an <code>assets/about/</code> folder), then replace each placeholder above with <code>&lt;img src="assets/about/your-image.jpg"&gt;</code>.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <footer class="site-footer">
+      Data courtesy of NOAA Space Weather Prediction Center and NASA's Solar Dynamics Observatory (public feeds). This console fetches directly from your browser, no server in between. Built for ERAU solar observation planning.
+    </footer>
+
+  </main>
+</div>
+
+<script>
+/* ============================================================
+   NAVIGATION
+   ============================================================ */
+document.querySelectorAll('.navbtn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.navbtn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('page-'+btn.dataset.page).classList.add('active');
+  });
+});
+
+document.getElementById('kioskCheck').addEventListener('change', (e)=>{
+  document.body.classList.toggle('kiosk-mode', e.target.checked);
+});
+
+/* ============================================================
+   CLOCK
+   ============================================================ */
+function tickClock(){
+  document.getElementById('clockUTC').textContent = new Date().toISOString().substr(11,8);
+}
+tickClock();
+setInterval(tickClock, 1000);
+
+/* ============================================================
+   CONFIG
+   ============================================================ */
+const GOES_XR_URL = "https://services.swpc.noaa.gov/json/goes/primary/xrays-1-day.json";
+const CYCLE_URL   = "https://services.swpc.noaa.gov/json/solar-cycle/observed-solar-cycle-indices.json";
+const KP_URL      = "https://services.swpc.noaa.gov/json/planetary_k_index_1m.json";
+
+/* Full set of SDO AIA channels + HMI products */
+const SDO_CHANNELS = [
+  { id: '0094', label: '94 \u212b',   desc: 'Flaring regions (~6M K). Best for detecting the hottest flare plasma. Fe XVIII emission.' },
+  { id: '0131', label: '131 \u212b',  desc: 'Flaring/hot plasma (~10M K). Captures the hottest flare loops. Fe VIII and Fe XXI emission.' },
+  { id: '0171', label: '171 \u212b',  desc: 'Quiet corona and upper transition region (~1M K). Best general overview.' },
+  { id: '0193', label: '193 \u212b',  desc: 'Corona and hot flare plasma (~1.25M K). Good for spotting flares and coronal holes.' },
+  { id: '0211', label: '211 \u212b',  desc: 'Active regions of the corona (~2M K). Highlights warmer coronal structures.' },
+  { id: '0304', label: '304 \u212b',  desc: 'Upper chromosphere and prominences (~50,000 K). Shows filaments and prominences best.' },
+  { id: '0335', label: '335 \u212b',  desc: 'Hot active regions (~2.5M K). Fe XVI emission. Complements 211 and 94.' },
+  { id: '1600', label: '1600 \u212b', desc: 'Upper photosphere and transition region (~10,000 K). C IV and continuum. Great for flare ribbons.' },
+  { id: '1700', label: '1700 \u212b', desc: 'Temperature minimum and photosphere (~5,000 K). Continuum. Shows granulation and sunspots.' },
+  { id: 'HMIIF', label: 'HMI White Light', desc: 'HMI intensitygram. The Sun in visible light. Sunspots show up dark here.' },
+  { id: 'HMIB',  label: 'HMI Magnetogram', desc: 'Line-of-sight photospheric magnetic field. White = positive polarity, dark = negative polarity.' },
+];
+let sdoChannelIndex = 2; /* default to 171 */
+
+const CLASS_COLORS = { '<A':'var(--c-lt)', 'A':'var(--c-a)', 'B':'var(--c-b)', 'C':'var(--c-c)', 'M':'var(--c-m)', 'X':'var(--c-x)' };
+const CLASS_ORDER  = ['A','B','C','M','X'];
+const CLASS_THRESH = { 'A':1e-8, 'B':1e-7, 'C':1e-6, 'M':1e-5, 'X':1e-4 };
+
+function classifyFlux(f){
+  if (f >= 1e-4) return 'X';
+  if (f >= 1e-5) return 'M';
+  if (f >= 1e-6) return 'C';
+  if (f >= 1e-7) return 'B';
+  if (f >= 1e-8) return 'A';
+  return '<A';
+}
+
+function setConn(ok, msg){
+  const dot = document.getElementById('liveDot');
+  document.getElementById('connState').textContent = msg;
+  dot.classList.toggle('bad', !ok);
+  dot.classList.toggle('live', ok);
+}
+function stampUpdated(){
+  document.getElementById('lastUpdated').textContent = 'Last sync: ' + new Date().toISOString().substr(11,8) + ' UTC';
+}
+
+/* ============================================================
+   SDO IMAGE — Page 1
+   ============================================================ */
+function sdoUrl(id){ return `https://sdo.gsfc.nasa.gov/assets/img/latest/latest_1024_${id}.jpg?t=${Date.now()}`; }
+
+function renderSdoChannelButtons(){
+  const row = document.getElementById('sunChannelRow');
+  row.innerHTML = SDO_CHANNELS.map((c,i) =>
+    `<button class="chan-btn ${i===sdoChannelIndex?'active':''}" data-idx="${i}">${c.label}</button>`
+  ).join('');
+  row.querySelectorAll('.chan-btn').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      sdoChannelIndex = parseInt(b.dataset.idx, 10);
+      renderSdoChannelButtons();
+      loadSdoImage();
+    });
+  });
+}
+
+function loadSdoImage(){
+  const chan = SDO_CHANNELS[sdoChannelIndex];
+  const img  = document.getElementById('sunImg');
+  img.src    = sdoUrl(chan.id);
+  img.alt    = `Live Sun image: SDO ${chan.label}`;
+  document.getElementById('sunCaption').textContent =
+    `SDO/AIA ${chan.label}: ${chan.desc} Updates every few minutes directly from NASA.`;
+}
+
+/* ============================================================
+   IMAGE COMPARE SLIDER
+   ============================================================ */
+let cmpL = 2, cmpR = 3; /* defaults: 171 vs 193 */
+
+function buildCompareSelects(){
+  const optHtml = SDO_CHANNELS.map((c,i) => `<option value="${i}">${c.label}</option>`).join('');
+  const selL = document.getElementById('compareSelL');
+  const selR = document.getElementById('compareSelR');
+  selL.innerHTML = optHtml;
+  selR.innerHTML = optHtml;
+  selL.value = cmpL;
+  selR.value = cmpR;
+  selL.addEventListener('change', ()=>{ cmpL = parseInt(selL.value); updateCompareImages(); });
+  selR.addEventListener('change', ()=>{ cmpR = parseInt(selR.value); updateCompareImages(); });
+}
+
+function updateCompareImages(){
+  const chanL = SDO_CHANNELS[cmpL];
+  const chanR = SDO_CHANNELS[cmpR];
+  document.getElementById('compareBase').src    = sdoUrl(chanL.id);
+  document.getElementById('compareOverlay').src = sdoUrl(chanR.id);
+  document.getElementById('compareLabelL').textContent = chanL.label;
+  document.getElementById('compareLabelR').textContent = chanR.label;
+}
+
+function initCompareSlider(){
+  const wrap   = document.getElementById('compareWrap');
+  const overlay = document.getElementById('compareOverlay');
+  const divider = document.getElementById('compareDivider');
+  let dragging = false;
+
+  function setPos(clientX){
+    const rect = wrap.getBoundingClientRect();
+    const pct  = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    const pctPx = (pct * 100).toFixed(2) + '%';
+    overlay.style.clipPath = `inset(0 ${(100 - pct*100).toFixed(2)}% 0 0)`;
+    divider.style.left = pctPx;
+  }
+
+  wrap.addEventListener('mousedown', e=>{ dragging=true; setPos(e.clientX); });
+  window.addEventListener('mousemove', e=>{ if(dragging) setPos(e.clientX); });
+  window.addEventListener('mouseup',   ()=>{ dragging=false; });
+
+  wrap.addEventListener('touchstart', e=>{ dragging=true; setPos(e.touches[0].clientX); }, {passive:true});
+  window.addEventListener('touchmove', e=>{ if(dragging) setPos(e.touches[0].clientX); }, {passive:true});
+  window.addEventListener('touchend',  ()=>{ dragging=false; });
+}
+
+buildCompareSelects();
+updateCompareImages();
+initCompareSlider();
+
+/* ============================================================
+   KP INDEX
+   ============================================================ */
+function kpColor(kp){
+  if (kp >= 8) return '#b91c1c';
+  if (kp >= 6) return '#ef4444';
+  if (kp >= 4) return '#f5a623';
+  return '#3ddc84';
+}
+
+function kpDesc(kp){
+  if (kp >= 8) return 'Severe geomagnetic storm (G4+)';
+  if (kp >= 7) return 'Strong geomagnetic storm (G3)';
+  if (kp >= 6) return 'Moderate geomagnetic storm (G2)';
+  if (kp >= 5) return 'Minor geomagnetic storm (G1)';
+  if (kp >= 4) return 'Active conditions';
+  if (kp >= 2) return 'Unsettled';
+  return 'Quiet';
+}
+
+async function loadKpIndex(){
+  const res  = await fetch(KP_URL, { cache:'no-store' });
+  if (!res.ok) throw new Error('Kp feed returned ' + res.status);
+  const data = await res.json();
+  if (!Array.isArray(data) || data.length === 0) throw new Error('Kp feed empty');
+
+  const parsed = data
+    .map(r => ({ time: new Date(r.time_tag), kp: parseFloat(r.kp_index) }))
+    .filter(r => !isNaN(r.time.getTime()) && !isNaN(r.kp))
+    .sort((a,b) => a.time - b.time);
+
+  const latest   = parsed[parsed.length - 1];
+  const recent24 = parsed.slice(-24);
+
+  const kpBig  = document.getElementById('kpBig');
+  kpBig.textContent     = latest.kp.toFixed(0);
+  kpBig.style.color     = kpColor(latest.kp);
+  document.getElementById('kpDesc').textContent = kpDesc(latest.kp);
+  document.getElementById('kpTime').textContent =
+    latest.time.toISOString().substr(0,16).replace('T',' ') + ' UTC';
+
+  /* Bar chart of last 24 readings */
+  const maxKp  = Math.max(...recent24.map(r=>r.kp), 5);
+  const barRow = document.getElementById('kpBarRow');
+  barRow.innerHTML = recent24.map(r => {
+    const h   = Math.max(4, (r.kp / maxKp) * 70);
+    const col = kpColor(r.kp);
+    const lbl = r.time.toISOString().substr(11,5);
+    return `<div class="kp-bar-wrap" title="${lbl} UTC | Kp ${r.kp.toFixed(1)}">
+      <div class="kp-bar" style="height:${h}px; background:${col};"></div>
+      <div class="kp-bar-label">${r.kp.toFixed(0)}</div>
+    </div>`;
+  }).join('');
+}
+
+/* ============================================================
+   GOES X-RAY FLUX
+   ============================================================ */
+let goesRecords   = [];
+let goesLongSeries = [];
+
+function pickPrimaryChannel(records){
+  let longRows = records.filter(r => {
+    const e = (r.energy || '').toString().toLowerCase();
+    return e.includes('1.0') || e.includes('0.1-0.8') || e.includes('long') || e.includes('xrsb');
+  });
+  if (longRows.length === 0) longRows = records;
+  return longRows;
+}
+
+async function loadGoesXray(){
+  const res  = await fetch(GOES_XR_URL, { cache:'no-store' });
+  if (!res.ok) throw new Error('GOES feed returned ' + res.status);
+  const data = await res.json();
+  if (!Array.isArray(data) || data.length === 0) throw new Error('GOES feed returned no records');
+
+  goesRecords = data
+    .map(r => ({ time: new Date(r.time_tag), flux: parseFloat(r.flux), energy: r.energy || '', satellite: r.satellite }))
+    .filter(r => !isNaN(r.time.getTime()) && !isNaN(r.flux))
+    .sort((a,b) => a.time - b.time);
+
+  goesLongSeries = pickPrimaryChannel(goesRecords).sort((a,b)=>a.time-b.time);
+
+  renderFluxHero();
+  renderFluxChart();
+  renderRecentTable();
+  renderRawJson();
+}
+
+function renderFluxHero(){
+  if (goesLongSeries.length === 0) return;
+  const latest = goesLongSeries[goesLongSeries.length - 1];
+  const cls    = classifyFlux(latest.flux);
+  const color  = CLASS_COLORS[cls] || 'var(--text-dim)';
+
+  document.getElementById('fluxValue').innerHTML = latest.flux.toExponential(2) + '<span class="flux-unit">W/m&sup2;</span>';
+  document.getElementById('fluxSub').textContent = 'Long channel (1.0 to 8.0 \u212b) \u00b7 ' + latest.time.toISOString().substr(0,16).replace('T',' ') + ' UTC';
+
+  const badge = document.getElementById('classBadge');
+  badge.textContent       = cls;
+  badge.style.color       = color;
+  badge.style.borderColor = color;
+  badge.style.background  = 'color-mix(in srgb, ' + color + ' 14%, transparent)';
+
+  const recent24 = goesLongSeries.filter(r => (latest.time - r.time) <= 24*3600*1000);
+  const maxRow   = recent24.reduce((a,b)=> b.flux > a.flux ? b : a, recent24[0]);
+  const maxCls   = classifyFlux(maxRow.flux);
+
+  const facts = [
+    ['Current class',  cls],
+    ['Current flux',   latest.flux.toExponential(2) + ' W/m\u00b2'],
+    ['24h peak class', maxCls],
+    ['24h peak flux',  maxRow.flux.toExponential(2) + ' W/m\u00b2'],
+    ['24h peak time',  maxRow.time.toISOString().substr(11,5) + ' UTC'],
+  ];
+  document.getElementById('quickFacts').innerHTML = facts.map(([l,v]) =>
+    `<div class="quickfact"><span class="qf-label">${l}</span><span class="qf-value">${v}</span></div>`
+  ).join('');
+
+  const calloutMsgs = {
+    '<A': 'Background levels, quiet sun, no flare activity detected.',
+    'A':  'Background levels, quiet sun, no flare activity detected.',
+    'B':  'Minor flux elevation. Common, low-impact background activity.',
+    'C':  'Small flare activity. Typically minimal effect on Earth.',
+    'M':  'Moderate flare in progress, can cause brief radio blackouts on the sunlit side of Earth.',
+    'X':  'Major flare in progress, can cause strong radio blackouts and is worth immediate attention.'
+  };
+  document.getElementById('readingCallout').innerHTML = `<strong>${cls}-class:</strong> ${calloutMsgs[cls] || calloutMsgs['<A']}`;
+}
+
+function renderFluxChart(){
+  const svg = document.getElementById('fluxChart');
+  if (goesLongSeries.length < 2){ svg.innerHTML = ''; return; }
+
+  const W = 900, H = 160;
+  const padL = 40, padR = 30, padT = 8, padB = 18;
+  const plotW = W - padL - padR, plotH = H - padT - padB;
+
+  const times  = goesLongSeries.map(r => r.time.getTime());
+  const t0 = Math.min(...times), t1 = Math.max(...times);
+  const yMin   = Math.min(1e-9, Math.min(...goesLongSeries.map(r=>r.flux)) / 5);
+  const yMax   = Math.max(1e-3, Math.max(...goesLongSeries.map(r=>r.flux)) * 5);
+  const logMin = Math.log10(yMin), logMax = Math.log10(yMax);
+
+  function xPos(t){ return padL + ((t - t0)/(t1 - t0)) * plotW; }
+  function yPos(f){ const lf = Math.log10(Math.max(f, 1e-12)); return padT + (1 - (lf-logMin)/(logMax-logMin)) * plotH; }
+
+  const latest = goesLongSeries[goesLongSeries.length-1];
+  const curCls  = classifyFlux(latest.flux);
+  const curColor = CLASS_COLORS[curCls] || '#7b8794';
+
+  let parts = [];
+  CLASS_ORDER.forEach(c => {
+    const y = yPos(CLASS_THRESH[c]);
+    const isCurrent = c === curCls;
+    parts.push(`<line x1="${padL}" x2="${W-padR}" y1="${y}" y2="${y}" stroke="${isCurrent?curColor:'#1f2937'}" stroke-width="${isCurrent?1.4:1}" stroke-dasharray="${isCurrent?'none':'4,4'}" opacity="${isCurrent?0.9:0.5}"/>`);
+    parts.push(`<text x="${W-padR+6}" y="${y+4}" font-family="IBM Plex Mono, monospace" font-size="10" fill="${isCurrent?curColor:'#4c5666'}" font-weight="${isCurrent?700:400}">${c}</text>`);
+  });
+
+  const points = goesLongSeries.map(r => `${xPos(r.time.getTime())},${yPos(r.flux)}`).join(' ');
+  parts.push(`<polyline points="${points}" fill="none" stroke="${curColor}" stroke-width="1.6" stroke-linejoin="round"/>`);
+
+  const lastX = xPos(latest.time.getTime()), lastY = yPos(latest.flux);
+  parts.push(`<circle cx="${lastX}" cy="${lastY}" r="8" fill="${curColor}" opacity="0.18"/>`);
+  parts.push(`<circle cx="${lastX}" cy="${lastY}" r="3" fill="${curColor}"/>`);
+
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svg.innerHTML = parts.join('');
+}
+
+function renderRecentTable(){
+  const host = document.getElementById('tableHost');
+  if (goesLongSeries.length === 0){ host.innerHTML = '<p class="skeleton">No data available.</p>'; return; }
+  const rows = goesLongSeries.slice(-15).reverse();
+  let html = `<table class="swpc-table"><thead><tr><th>Time (UTC)</th><th>Flux (W/m\u00b2)</th><th>Class</th></tr></thead><tbody>`;
+  rows.forEach(r => {
+    const cls = classifyFlux(r.flux);
+    html += `<tr><td>${r.time.toISOString().substr(0,16).replace('T',' ')}</td><td>${r.flux.toExponential(2)}</td><td style="color:${CLASS_COLORS[cls]}">${cls}</td></tr>`;
+  });
+  html += '</tbody></table>';
+  host.innerHTML = html;
+}
+
+function renderRawJson(){
+  document.getElementById('rawJson').textContent = JSON.stringify(goesRecords.slice(-30), null, 2);
+}
+
+/* ============================================================
+   DOWNLOADS
+   ============================================================ */
+function triggerDownload(filename, content, mime){
+  const blob = new Blob([content], { type: mime });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+document.getElementById('downloadCsvBtn').addEventListener('click', ()=>{
+  if (goesRecords.length === 0) return;
+  const header = 'time_tag,energy,flux,satellite\n';
+  const rows   = goesRecords.map(r => `${r.time.toISOString()},${r.energy},${r.flux},${r.satellite ?? ''}`).join('\n');
+  triggerDownload('goes18_xray_flux.csv', header + rows, 'text/csv');
+});
+document.getElementById('downloadJsonBtn').addEventListener('click', ()=>{
+  if (goesRecords.length === 0) return;
+  triggerDownload('goes18_xray_flux.json', JSON.stringify(goesRecords, null, 2), 'application/json');
+});
+document.getElementById('refreshDataBtn').addEventListener('click', refreshAll);
+
+/* ============================================================
+   SUN TIMES — Daytona Beach FL
+   ============================================================ */
+const DAYTONA_LAT = 29.2108;
+const DAYTONA_LON = -81.0228;
+
+function computeSunTimes(date, lat, lon){
+  const rad      = Math.PI / 180;
+  const dayOfYear = Math.floor((date - new Date(date.getFullYear(),0,0)) / 86400000);
+
+  const fracYear = (2*Math.PI/365) * (dayOfYear - 1);
+  const eqTime   = 229.18 * (0.000075 + 0.001868*Math.cos(fracYear) - 0.032077*Math.sin(fracYear)
+                   - 0.014615*Math.cos(2*fracYear) - 0.040849*Math.sin(2*fracYear));
+  const decl     = 0.006918 - 0.399912*Math.cos(fracYear) + 0.070257*Math.sin(fracYear)
+                   - 0.006758*Math.cos(2*fracYear) + 0.000907*Math.sin(2*fracYear)
+                   - 0.002697*Math.cos(3*fracYear) + 0.00148*Math.sin(3*fracYear);
+
+  const latRad   = lat * rad;
+  const zenith   = 90.833 * rad;
+  const cosHaArg = (Math.cos(zenith) - Math.sin(latRad)*Math.sin(decl)) / (Math.cos(latRad)*Math.cos(decl));
+  const clamped  = Math.max(-1, Math.min(1, cosHaArg));
+  const ha       = Math.acos(clamped) / rad;
+
+  const solarNoonUTCmin = 720 - 4*lon - eqTime;
+  const sunriseUTCmin   = solarNoonUTCmin - 4*ha;
+  const sunsetUTCmin    = solarNoonUTCmin + 4*ha;
+
+  function minutesToDate(mins){
+    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    d.setUTCMinutes(mins);
+    return d;
+  }
+  return { sunrise: minutesToDate(sunriseUTCmin), sunset: minutesToDate(sunsetUTCmin) };
+}
+
+function renderSunTimes(){
+  const now = new Date();
+  const { sunrise, sunset } = computeSunTimes(now, DAYTONA_LAT, DAYTONA_LON);
+
+  const fmt = (d) => d.toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit', timeZone:'America/New_York' });
+  document.getElementById('sunriseVal').textContent = fmt(sunrise);
+  document.getElementById('sunsetVal').textContent  = fmt(sunset);
+  document.getElementById('sunriseSub').textContent = 'America/New York';
+  document.getElementById('sunsetSub').textContent  = 'America/New York';
+
+  const dayMinutes = (sunset - sunrise) / 60000;
+  const hrs  = Math.floor(dayMinutes / 60), mins = Math.round(dayMinutes % 60);
+  const pct  = Math.min(100, Math.max(0, (dayMinutes / (14.5*60)) * 100));
+  document.getElementById('daylengthFill').style.width = pct + '%';
+  document.getElementById('daylengthLabel').textContent = `${hrs}h ${mins}m of daylight today`;
+}
+
+/* ============================================================
+   SOLAR CYCLE 25
+   ============================================================ */
+async function loadSolarCycle(){
+  const res  = await fetch(CYCLE_URL, { cache:'no-store' });
+  if (!res.ok) throw new Error('Solar cycle feed returned ' + res.status);
+  const data = await res.json();
+  if (!Array.isArray(data) || data.length === 0) throw new Error('Solar cycle feed returned no records');
+
+  const rows = data
+    .map(r => ({
+      time:     new Date(r['time-tag'] + '-01'),
+      ssn:      parseFloat(r.ssn),
+      smoothed: r.smoothed_ssn !== undefined ? parseFloat(r.smoothed_ssn) : null
+    }))
+    .filter(r => !isNaN(r.time.getTime()) && !isNaN(r.ssn))
+    .sort((a,b)=>a.time-b.time);
+
+  const cutoff = new Date(); cutoff.setFullYear(cutoff.getFullYear() - 9);
+  const recent = rows.filter(r => r.time >= cutoff);
+  renderCycleChart(recent);
+
+  const withSmoothed = rows.filter(r => r.smoothed !== null && !isNaN(r.smoothed));
+  const peak         = withSmoothed.reduce((a,b)=> b.smoothed > a.smoothed ? b : a, withSmoothed[0]);
+  const latestSmoothed = withSmoothed[withSmoothed.length-1];
+
+  document.getElementById('cycleSummary').innerHTML =
+    `Solar Cycle 25 began Dec 2019. Smoothed peak so far: <strong style="color:var(--text)">${peak.smoothed.toFixed(0)}</strong> in ${peak.time.toLocaleDateString('en-US',{month:'long',year:'numeric'})}. ` +
+    `Latest smoothed sunspot number (${latestSmoothed.time.toLocaleDateString('en-US',{month:'short',year:'numeric'})}): <strong style="color:var(--text)">${latestSmoothed.smoothed.toFixed(0)}</strong>.`;
+}
+
+function renderCycleChart(rows){
+  const svg = document.getElementById('cycleChart');
+  if (rows.length < 2){ svg.innerHTML = ''; return; }
+
+  const W = 600, H = 280, padL = 40, padR = 14, padT = 14, padB = 28;
+  const plotW = W - padL - padR, plotH = H - padT - padB;
+
+  const times   = rows.map(r => r.time.getTime());
+  const t0 = Math.min(...times), t1 = Math.max(...times);
+  const maxSsn  = Math.max(...rows.map(r => Math.max(r.ssn, r.smoothed || 0)), 50) * 1.15;
+
+  function xPos(t){ return padL + ((t-t0)/(t1-t0)) * plotW; }
+  function yPos(v){ return padT + (1 - v/maxSsn) * plotH; }
+
+  let parts = [];
+  for (let i=0;i<=4;i++){
+    const y = padT + (i/4)*plotH;
+    parts.push(`<line x1="${padL}" x2="${W-padR}" y1="${y}" y2="${y}" stroke="#1f2937" stroke-width="1" opacity="0.5"/>`);
+    parts.push(`<text x="${padL-8}" y="${y+4}" font-family="IBM Plex Mono, monospace" font-size="9.5" fill="#7b8794" text-anchor="end">${Math.round(maxSsn*(1-i/4))}</text>`);
+  }
+  const years = [...new Set(rows.map(r=>r.time.getFullYear()))];
+  years.forEach(y => {
+    const jan = new Date(y,0,1).getTime();
+    if (jan < t0 || jan > t1) return;
+    const x = xPos(jan);
+    parts.push(`<line x1="${x}" x2="${x}" y1="${padT}" y2="${H-padB}" stroke="#1f2937" stroke-width="1" opacity="0.4"/>`);
+    parts.push(`<text x="${x}" y="${H-padB+16}" font-family="IBM Plex Mono, monospace" font-size="9.5" fill="#7b8794" text-anchor="middle">${y}</text>`);
+  });
+
+  const rawPts = rows.map(r => `${xPos(r.time.getTime())},${yPos(r.ssn)}`).join(' ');
+  parts.push(`<polyline points="${rawPts}" fill="none" stroke="#4c5666" stroke-width="1.2" opacity="0.7"/>`);
+
+  const smoothedRows = rows.filter(r => r.smoothed !== null && !isNaN(r.smoothed));
+  if (smoothedRows.length > 1){
+    const smPts = smoothedRows.map(r => `${xPos(r.time.getTime())},${yPos(r.smoothed)}`).join(' ');
+    parts.push(`<polyline points="${smPts}" fill="none" stroke="#3ddbd9" stroke-width="2"/>`);
+  }
+
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svg.innerHTML = parts.join('');
+}
+
+/* ============================================================
+   MASTER INIT / REFRESH / ERROR HANDLING
+   ============================================================ */
+function showFetchError(context, err){
+  console.error(context, err);
+  setConn(false, 'Connection issue');
+  const url = context === 'GOES X-ray feed' ? GOES_XR_URL : CYCLE_URL;
+  const msg = `<div class="error-box">Could not reach <strong>${context}</strong>. This can happen if your browser or network blocks cross-origin requests to NOAA, or the service is briefly down. Try refreshing, or open the feed directly: <a href="${url}" target="_blank" rel="noopener">${url}</a></div>`;
+
+  if (context === 'GOES X-ray feed'){
+    document.getElementById('fluxSub').textContent    = 'Data unavailable';
+    document.getElementById('quickFacts').innerHTML   = msg;
+    document.getElementById('tableHost').innerHTML    = msg;
+    document.getElementById('rawJson').textContent    = 'Error: ' + err.message;
+  } else {
+    document.getElementById('cycleSummary').innerHTML = msg;
+  }
+}
+
+let refreshing = false;
+async function refreshAll(){
+  if (refreshing) return;
+  refreshing = true;
+  const btn = document.getElementById('refreshDataBtn');
+  if (btn){ btn.disabled = true; btn.textContent = 'Refreshing\u2026'; }
+
+  const results = await Promise.allSettled([ loadGoesXray(), loadSolarCycle(), loadKpIndex() ]);
+  results.forEach((r,i) => { if (r.status === 'rejected') showFetchError(i===0?'GOES X-ray feed':i===1?'solar cycle feed':'Kp index feed', r.reason); });
+  setConn(results.every(r=>r.status==='fulfilled'), results.every(r=>r.status==='fulfilled') ? 'Live' : 'Partial data');
+  stampUpdated();
+
+  if (btn){ btn.disabled = false; btn.textContent = 'Refresh feed'; }
+  refreshing = false;
+}
+
+renderSdoChannelButtons();
+loadSdoImage();
+renderSunTimes();
+refreshAll();
+setInterval(refreshAll,      60000);
+setInterval(loadSdoImage,    5*60000);
+setInterval(renderSunTimes,  10*60000);
+</script>
+</body>
+</html>
